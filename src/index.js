@@ -31,6 +31,9 @@ function convertRtfToHtml(rtf) {
     String.fromCharCode(parseInt(hex, 16))
   );
 
+  // Replace non-breaking space (\~) with a normal space
+  rtf = rtf.replace(/\\~/g, " ");
+  
   // Color spans (\cfN ... \cf0)
   rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
     if (colorTable[n]) {
