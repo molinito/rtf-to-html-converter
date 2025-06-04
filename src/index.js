@@ -42,18 +42,42 @@ function convertRtfToHtml(rtf) {
     return "";
   });
 
-
-     // Bold (\b ... \b0)
+  // Bold (\b ... \b0)
   rtf = rtf.replace(/\{\\b([^}]*)\}/gms, "<strong>$1</strong>");
-  
+
   // Italic (\i ... \i0)
   rtf = rtf.replace(/\{\\i([^}]*)\}/gms, "<em>$1</em>");
-  
+
   // Underline (\ul ... \ulnone)
   rtf = rtf.replace(/\{\\ul([^}]*)\}/gms, "<u>$1</u>");
 
-
   rtf = rtf.replace(/\\cf0/g, "</span>");
+
+  // Merge <span style="color:..."> with <strong>, <em>, <u>
+  rtf = rtf.replace(
+    /<span style="color: ([^;]+);?">([\s\S]*?)<\/span>/g,
+    (match, color, content) => {
+      if (/^<strong>[\s\S]*<\/strong>$/.test(content)) {
+        return content.replace(
+          /^<strong>/,
+          `<strong style="color: ${color};">`
+        );
+      }
+      if (/^<em>[\s\S]*<\/em>$/.test(content)) {
+        return content.replace(
+          /^<em>/,
+          `<em style="color: ${color};">`
+        );
+      }
+      if (/^<u>[\s\S]*<\/u>$/.test(content)) {
+        return content.replace(
+          /^<u>/,
+          `<u style="color: ${color};">`
+        );
+      }
+      return `<span style="color: ${color};">${content}</span>`;
+    }
+  );
 
   // Bullets (\u9679? or \bullet)
   rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
