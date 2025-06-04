@@ -33,7 +33,7 @@ function convertRtfToHtml(rtf) {
 
   // Replace non-breaking space (\~) with a normal space
   rtf = rtf.replace(/\\~/g, " ");
-  
+
   // Color spans (\cfN ... \cf0)
   rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
     if (colorTable[n]) {
@@ -41,12 +41,24 @@ function convertRtfToHtml(rtf) {
     }
     return "";
   });
+
+
+    // Bold (\b ... \b0)
+  rtf = rtf.replace(/\\b\s?(.*?)\\b0/gms, "<strong>$1</strong>");
+  
+  // Italic (\i ... \i0)
+  rtf = rtf.replace(/\\i\s?(.*?)\\i0/gms, "<em>$1</em>");
+  
+  // Underline (\ul ... \ulnone)
+  rtf = rtf.replace(/\\ul\s?(.*?)\\ulnone/gms, "<u>$1</u>");
+
+
   rtf = rtf.replace(/\\cf0/g, "</span>");
 
-  // Bold, italic, underline (open/close tags)
+  /* Bold, italic, underline (open/close tags)
   rtf = rtf.replace(/\\b ([^\\]+)\\b0/g, "<strong>$1</strong>");
   rtf = rtf.replace(/\\i ([^\\]+)\\i0/g, "<em>$1</em>");
-  rtf = rtf.replace(/\\ul ([^\\]+)\\ulnone/g, "<u>$1</u>");
+  rtf = rtf.replace(/\\ul ([^\\]+)\\ulnone/g, "<u>$1</u>");*/
 
   // Bullets (\u9679? or \bullet)
   rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
