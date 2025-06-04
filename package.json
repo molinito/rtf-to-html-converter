@@ -1,0 +1,17 @@
+{
+  "name": "rtf-to-html-converter",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "echo is JS pure code",
+    "test": "node test.js"
+  },
+  "keywords": ["rtf", "html", "converter", "parser"],
+  "author": "Marcelo Saravia",
+  "license": "ISC",
+  "description": "Convert text RTF to HTML"
+
+}
+
+
