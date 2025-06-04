@@ -1,8 +1,9 @@
 function convertRtfToHtml(rtf) {
   if (!rtf || typeof rtf !== "string") return "";
 
-  // Remove font table
+  // Remove font table and font names
   rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
+  rtf = rtf.replace(/\{\\f\d+\\fnil\\fcharset\d+ [^;]+;\}/g, "");
 
   // Extract color table
   let colorTable = [];
@@ -30,46 +31,45 @@ function convertRtfToHtml(rtf) {
     String.fromCharCode(parseInt(hex, 16))
   );
 
-  // Bold, italic, underline
-  rtf = rtf
-    .replace(/\\b\s?(.*?)\\b0/g, "<strong>$1</strong>")
-    .replace(/\\i\s?(.*?)\\i0/g, "<em>$1</em>")
-    .replace(/\\ul\s?(.*?)\\ulnone/g, "<u>$1</u>");
-
   // Color spans (\cfN ... \cf0)
-  rtf = rtf.replace(/\\cf(\d+)\s?(.*?)(?=(\\cf\d+|\\cf0|$))/gs, (match, n, text) => {
+  rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
     if (colorTable[n]) {
-      return `<span style="color: ${colorTable[n]};">${text}</span>`;
+      return `<span style="color: ${colorTable[n]};">`;
     }
-    return text;
+    return "";
   });
   rtf = rtf.replace(/\\cf0/g, "</span>");
+
+  // Bold, italic, underline (open/close tags)
+  rtf = rtf.replace(/\\b ([^\\]+)\\b0/g, "<strong>$1</strong>");
+  rtf = rtf.replace(/\\i ([^\\]+)\\i0/g, "<em>$1</em>");
+  rtf = rtf.replace(/\\ul ([^\\]+)\\ulnone/g, "<u>$1</u>");
 
   // Bullets (\u9679? or \bullet)
   rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
 
+  // List items: lines starting with bullet or number
+  rtf = rtf.replace(/(?:^|\n)[ \t]*•[ \t]*(.+)/g, "\n<li>$1</li>");
+  rtf = rtf.replace(/(?:^|\n)[ \t]*\d+\.[ \t]*(.+)/g, "\n<li>$1</li>");
+
+  // Group consecutive <li> into <ul>
+  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
+
   // Paragraphs and line breaks
-  rtf = rtf.replace(/\\par[d]?/g, "\n");
+  rtf = rtf.replace(/\\par[d]?/g, "</div><div>");
+  rtf = `<div>${rtf}</div>`;
 
   // Remove remaining RTF commands and braces
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
-  // Handle lists: lines starting with bullet
-  rtf = rtf.replace(/^[ \t]*•[ \t]*(.+)$/gm, "<li>$1</li>");
-  // Group consecutive <li> into <ul>
-  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
+  // Clean up empty divs and whitespace
+  rtf = rtf.replace(/<div><\/div>/g, "");
+  rtf = rtf.replace(/<div>\s*<\/div>/g, "");
+  rtf = rtf.replace(/<\/div><div>/g, "</div>\n<div>");
 
-  // Paragraphs: split by double line breaks
-  rtf = rtf
-    .split(/\n{2,}/)
-    .map((p) => p.trim() ? `<p>${p.trim()}</p>` : "")
-    .join("");
-
-  // Remove empty tags and extra whitespace
-  rtf = rtf.replace(/<p>\s*<\/p>/g, "");
-  rtf = rtf.replace(/<ul>\s*<\/ul>/g, "");
-  rtf = rtf.replace(/\s+/g, " ");
+  // Remove extra newlines
+  rtf = rtf.replace(/\n{2,}/g, "\n");
 
   return rtf.trim();
 }
