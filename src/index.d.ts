@@ -1,0 +1,1 @@
+export declare function convertRtfToHtml(rtf: string): string;
