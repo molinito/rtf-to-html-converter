@@ -1,6 +1,6 @@
 {
   "name": "rtf-to-html-converter",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
