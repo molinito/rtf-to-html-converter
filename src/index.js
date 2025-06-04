@@ -1,54 +1,77 @@
 function convertRtfToHtml(rtf) {
   if (!rtf || typeof rtf !== "string") return "";
 
-  // Elimina la tabla de fuentes y color para que no aparezcan como texto
+  // Remove font table
   rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
-  rtf = rtf.replace(/\\colortbl[\s\S]+?;}/g, "");
 
-  // Decodifica caracteres Unicode (\uXXXX?)
+  // Extract color table
+  let colorTable = [];
+  rtf = rtf.replace(/\\colortbl\s*;([^}]*)}/, (_, colors) => {
+    colorTable = colors.split(";").map((color) => {
+      const red = /\\red(\d+)/.exec(color);
+      const green = /\\green(\d+)/.exec(color);
+      const blue = /\\blue(\d+)/.exec(color);
+      if (red && green && blue) {
+        return `rgb(${red[1]},${green[1]},${blue[1]})`;
+      }
+      return null;
+    });
+    return "";
+  });
+
+  // Unicode characters (\uXXXX?)
   rtf = rtf.replace(/\\u(-?\d+)\??/g, (_, code) => {
     const num = parseInt(code, 10);
     return String.fromCharCode(num < 0 ? 65536 + num : num);
   });
 
-  // Decodifica caracteres hexadecimales (\’e1)
+  // Hexadecimal characters (\’e1)
   rtf = rtf.replace(/\\'([0-9a-f]{2})/gi, (_, hex) =>
     String.fromCharCode(parseInt(hex, 16))
   );
 
-  // Negrita, cursiva, subrayado (soporta anidados)
+  // Bold, italic, underline
   rtf = rtf
     .replace(/\\b\s?(.*?)\\b0/g, "<strong>$1</strong>")
     .replace(/\\i\s?(.*?)\\i0/g, "<em>$1</em>")
     .replace(/\\ul\s?(.*?)\\ulnone/g, "<u>$1</u>");
 
-  // Color básico: rojo y azul (puedes agregar más si lo necesitas)
-  rtf = rtf.replace(/\\cf1\s?(.*?)\\cf0/g, '<span style="color: red;">$1</span>');
-  rtf = rtf.replace(/\\cf2\s?(.*?)\\cf0/g, '<span style="color: blue;">$1</span>');
+  // Color spans (\cfN ... \cf0)
+  rtf = rtf.replace(/\\cf(\d+)\s?(.*?)(?=(\\cf\d+|\\cf0|$))/gs, (match, n, text) => {
+    if (colorTable[n]) {
+      return `<span style="color: ${colorTable[n]};">${text}</span>`;
+    }
+    return text;
+  });
+  rtf = rtf.replace(/\\cf0/g, "</span>");
 
-  // Bullets: convierte líneas que empiezan con ● o \u9679? en <p>● ...</p>
-  rtf = rtf.replace(/(?:\\par)?\s*●\s*([^\r\n<]+)/g, '<p>● $1</p>');
-  rtf = rtf.replace(/(?:\\par)?\s*\\u9679\?\s*([^\r\n<]+)/g, '<p>● $1</p>');
+  // Bullets (\u9679? or \bullet)
+  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
 
-  // Saltos de párrafo: convierte \par en </p><p>
-  rtf = rtf.replace(/\\par\s*/g, "</p><p>");
+  // Paragraphs and line breaks
+  rtf = rtf.replace(/\\par[d]?/g, "\n");
 
-  // Quita comandos RTF y llaves restantes
+  // Remove remaining RTF commands and braces
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
-  // Quita líneas vacías y espacios extra
+  // Handle lists: lines starting with bullet
+  rtf = rtf.replace(/^[ \t]*•[ \t]*(.+)$/gm, "<li>$1</li>");
+  // Group consecutive <li> into <ul>
+  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
+
+  // Paragraphs: split by double line breaks
+  rtf = rtf
+    .split(/\n{2,}/)
+    .map((p) => p.trim() ? `<p>${p.trim()}</p>` : "")
+    .join("");
+
+  // Remove empty tags and extra whitespace
   rtf = rtf.replace(/<p>\s*<\/p>/g, "");
-  rtf = rtf.replace(/^\s+|\s+$/g, "");
+  rtf = rtf.replace(/<ul>\s*<\/ul>/g, "");
+  rtf = rtf.replace(/\s+/g, " ");
 
-  // Asegura que el texto esté envuelto en <p>
-  if (!/^<p>/.test(rtf)) rtf = `<p>${rtf}`;
-  if (!/<\/p>$/.test(rtf)) rtf = `${rtf}</p>`;
-
-  // Limpia múltiples <p> consecutivos
-  rtf = rtf.replace(/<\/p>\s*<p>/g, "</p><p>");
-
-  return rtf;
+  return rtf.trim();
 }
 
 module.exports = { convertRtfToHtml };
