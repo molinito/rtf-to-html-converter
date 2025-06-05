@@ -1,40 +1,40 @@
-
 function convertRtfToHtml(rtf) {
   if (!rtf || typeof rtf !== "string") return "";
 
-  // Eliminar tabla de fuentes
+  // Remove font table
   rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
   rtf = rtf.replace(/\{\\f\d+\\fnil\\fcharset\d+ [^;]+;\}/g, "");
 
-  // Obtener tabla de colores
-  // Extraer y parsear la tabla de colores
-let colorTableMatch = rtf.match(/\\colortbl\s*;([^}]*)}/);
-let colorTable = {};
-if (colorTableMatch) {
-  const colors = colorTableMatch[1].split(";").filter(c => c.trim() !== "");
-  colors.forEach((colorDef, index) => {
-    const red = (colorDef.match(/\\red(\d+)/) || [])[1] || 0;
-    const green = (colorDef.match(/\\green(\d+)/) || [])[1] || 0;
-    const blue = (colorDef.match(/\\blue(\d+)/) || [])[1] || 0;
-    colorTable[index + 1] = `rgb(${red},${green},${blue})`; // +1 porque el primer índice (0) es vacío
-  });
-}
+  // Extract and remove color table
+  let colorTable = {};
+  let colorTableMatch = rtf.match(/\\colortbl\s*;([^}]*)}/);
+  if (colorTableMatch) {
+    const colors = colorTableMatch[1].split(";").filter(c => c.trim() !== "");
+    colors.forEach((colorDef, index) => {
+      const red = (colorDef.match(/\\red(\d+)/) || [])[1] || 0;
+      const green = (colorDef.match(/\\green(\d+)/) || [])[1] || 0;
+      const blue = (colorDef.match(/\\blue(\d+)/) || [])[1] || 0;
+      colorTable[index + 1] = `rgb(${red},${green},${blue})`;
+    });
+    // Remove color table from RTF
+    rtf = rtf.replace(/\\colortbl\s*;[^}]*}/, "");
+  }
 
-  // Convertir caracteres unicode (\uXXXX?)
+  // Convert unicode characters (\uXXXX?)
   rtf = rtf.replace(/\\u(-?\d+)\??/g, (_, code) => {
     const num = parseInt(code, 10);
     return String.fromCharCode(num < 0 ? 65536 + num : num);
   });
 
-  // Convertir caracteres hexadecimales (\’e1)
+  // Convert hexadecimal characters (\’e1)
   rtf = rtf.replace(/\\'([0-9a-f]{2})/gi, (_, hex) =>
     String.fromCharCode(parseInt(hex, 16))
   );
 
-  // Espacios no separables (\~)
+  // Non-breaking spaces (\~)
   rtf = rtf.replace(/\\~/g, " ");
 
-  // Manejo de colores (\cfN ... \cf0)
+  // Handle colors (\cfN ... \cf0)
   rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
     const color = colorTable[n];
     if (color) {
@@ -45,92 +45,95 @@ if (colorTableMatch) {
 
   rtf = rtf.replace(/\\cf0/g, "[[COLOR_END]]");
 
-  // Negrita (\b ... \b0)
+  // Bold (\b ... \b0)
   rtf = rtf.replace(/\{\\b([^}]*)\}/gms, "<strong>$1</strong>");
 
-  // Cursiva (\i ... \i0)
+  // Italic (\i ... \i0)
   rtf = rtf.replace(/\{\\i([^}]*)\}/gms, "<em>$1</em>");
 
-  // Subrayado (\ul ... \ulnone)
+  // Underline (\ul ... \ulnone)
   rtf = rtf.replace(/\{\\ul([^}]*)\}/gms, "<u>$1</u>");
 
-  // Párrafos
+  // Paragraphs
   rtf = rtf.replace(/\\par[d]?/g, "</div><div>");
   rtf = `<div>${rtf}</div>`;
 
-  // Eliminar comandos RTF y llaves restantes
+  // Remove remaining RTF commands and braces
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
-  // Aplicar los spans de color
+  // Apply color spans
   rtf = rtf
     .replace(/\[\[COLOR_START:([^\]]+)\]\]/g, '<span style="color: $1;">')
     .replace(/\[\[COLOR_END\]\]/g, '</span>');
 
-  // Manejo de viñetas
+  // Handle bullets
   rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
 
-  // Agrupar elementos de lista
+  // Group list items
   rtf = rtf.replace(/(?:^|\n)[ \t]*•[ \t]*(.+)/g, "\n<li>$1</li>");
   rtf = rtf.replace(/(?:^|\n)[ \t]*\d+\.[ \t]*(.+)/g, "\n<li>$1</li>");
   rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
 
-  // Eliminar divs vacíos
+  // Remove empty divs
   rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
   rtf = rtf.replace(/(<div>&nbsp;<\/div>)+/g, "<div>&nbsp;</div>");
   rtf = rtf.replace(/<\/div><div>/g, "</div>\n<div>");
   rtf = rtf.replace(/\n{2,}/g, "\n");
 
+  // Optionally remove empty divs at the start and end
+  rtf = rtf.replace(/^(<div>&nbsp;<\/div>\s*)+/, "");
+  rtf = rtf.replace(/(\s*<div>&nbsp;<\/div>)+$/, "");
+
   return rtf.trim();
 }
 
-module.exports = { convertRtfToHtml };
-
-
-/*
-function convertRtfToHtml(rtf) {
+module.exports = { convertRtfToHtml };function convertRtfToHtml(rtf) {
   if (!rtf || typeof rtf !== "string") return "";
 
-  // Remove font table and font names
+  // Remove font table
   rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
   rtf = rtf.replace(/\{\\f\d+\\fnil\\fcharset\d+ [^;]+;\}/g, "");
 
-  // Extract color table
-  let colorTable = [];
-  rtf = rtf.replace(/\\colortbl\s*;([^}]*)}/, (_, colors) => {
-    colorTable = colors.split(";").map((color) => {
-      const red = /\\red(\d+)/.exec(color);
-      const green = /\\green(\d+)/.exec(color);
-      const blue = /\\blue(\d+)/.exec(color);
-      if (red && green && blue) {
-        return `rgb(${red[1]},${green[1]},${blue[1]})`;
-      }
-      return null;
+  // Extract and remove color table
+  let colorTable = {};
+  let colorTableMatch = rtf.match(/\\colortbl\s*;([^}]*)}/);
+  if (colorTableMatch) {
+    const colors = colorTableMatch[1].split(";").filter(c => c.trim() !== "");
+    colors.forEach((colorDef, index) => {
+      const red = (colorDef.match(/\\red(\d+)/) || [])[1] || 0;
+      const green = (colorDef.match(/\\green(\d+)/) || [])[1] || 0;
+      const blue = (colorDef.match(/\\blue(\d+)/) || [])[1] || 0;
+      colorTable[index + 1] = `rgb(${red},${green},${blue})`;
     });
-    return "";
-  });
+    // Remove color table from RTF
+    rtf = rtf.replace(/\\colortbl\s*;[^}]*}/, "");
+  }
 
-  // Unicode characters (\uXXXX?)
+  // Convert unicode characters (\uXXXX?)
   rtf = rtf.replace(/\\u(-?\d+)\??/g, (_, code) => {
     const num = parseInt(code, 10);
     return String.fromCharCode(num < 0 ? 65536 + num : num);
   });
 
-  // Hexadecimal characters (\’e1)
+  // Convert hexadecimal characters (\’e1)
   rtf = rtf.replace(/\\'([0-9a-f]{2})/gi, (_, hex) =>
     String.fromCharCode(parseInt(hex, 16))
   );
 
-  // Replace non-breaking space (\~) with a normal space
+  // Non-breaking spaces (\~)
   rtf = rtf.replace(/\\~/g, " ");
 
-  // Color spans (\cfN ... \cf0)
+  // Handle colors (\cfN ... \cf0)
   rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
-    if (colorTable[n]) {
-      return `<span style="color: ${colorTable[n]};">`;
+    const color = colorTable[n];
+    if (color) {
+      return `[[COLOR_START:${color}]]`;
     }
     return "";
   });
+
+  rtf = rtf.replace(/\\cf0/g, "[[COLOR_END]]");
 
   // Bold (\b ... \b0)
   rtf = rtf.replace(/\{\\b([^}]*)\}/gms, "<strong>$1</strong>");
@@ -141,54 +144,7 @@ function convertRtfToHtml(rtf) {
   // Underline (\ul ... \ulnone)
   rtf = rtf.replace(/\{\\ul([^}]*)\}/gms, "<u>$1</u>");
 
-  rtf = rtf.replace(/\\cf0/g, "</span>");
-
-  // Merge <span style="color:..."> with <strong>, <em>, <u>
-  rtf = rtf.replace(
-    /<span style="color: ([^;]+);?">([\s\S]*?)<\/span>/g,
-    (match, color, content) => {
-      // Si el contenido es solo un strong/em/u, fusionar el style
-      if (/^<strong>[\s\S]*<\/strong>$/.test(content)) {
-        return content.replace(
-          /^<strong>/,
-          `<strong style="color: ${color};">`
-        );
-      }
-      if (/^<em>[\s\S]*<\/em>$/.test(content)) {
-        return content.replace(
-          /^<em>/,
-          `<em style="color: ${color};">`
-        );
-      }
-      if (/^<u>[\s\S]*<\/u>$/.test(content)) {
-        return content.replace(
-          /^<u>/,
-          `<u style="color: ${color};">`
-        );
-      }
-      // Si hay varios estilos anidados, aplica el color al primero
-      if (/^<(strong|em|u)>/.test(content)) {
-        return content.replace(
-          /^<(strong|em|u)>/,
-          `<$1 style="color: ${color};">`
-        );
-      }
-      // Si no, dejar el span como está
-      return `<span style="color: ${color};">${content}</span>`;
-    }
-  );
-
-  // Bullets (\u9679? or \bullet)
-  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
-
-  // List items: lines starting with bullet or number
-  rtf = rtf.replace(/(?:^|\n)[ \t]*•[ \t]*(.+)/g, "\n<li>$1</li>");
-  rtf = rtf.replace(/(?:^|\n)[ \t]*\d+\.[ \t]*(.+)/g, "\n<li>$1</li>");
-
-  // Group consecutive <li> into <ul>
-  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
-
-  // Paragraphs and line breaks
+  // Paragraphs
   rtf = rtf.replace(/\\par[d]?/g, "</div><div>");
   rtf = `<div>${rtf}</div>`;
 
@@ -196,17 +152,31 @@ function convertRtfToHtml(rtf) {
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
-  // Replace empty <div> or <div> with only spaces with &nbsp; for visual separation
-  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
+  // Apply color spans
+  rtf = rtf
+    .replace(/\[\[COLOR_START:([^\]]+)\]\]/g, '<span style="color: $1;">')
+    .replace(/\[\[COLOR_END\]\]/g, '</span>');
 
-  // Clean up consecutive empty divs and whitespace
+  // Handle bullets
+  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
+
+  // Group list items
+  rtf = rtf.replace(/(?:^|\n)[ \t]*•[ \t]*(.+)/g, "\n<li>$1</li>");
+  rtf = rtf.replace(/(?:^|\n)[ \t]*\d+\.[ \t]*(.+)/g, "\n<li>$1</li>");
+  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
+
+  // Remove empty divs
+  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
   rtf = rtf.replace(/(<div>&nbsp;<\/div>)+/g, "<div>&nbsp;</div>");
   rtf = rtf.replace(/<\/div><div>/g, "</div>\n<div>");
-
-  // Remove extra newlines
   rtf = rtf.replace(/\n{2,}/g, "\n");
+
+  // Optionally remove empty divs at the start and end
+  rtf = rtf.replace(/^(<div>&nbsp;<\/div>\s*)+/, "");
+  rtf = rtf.replace(/(\s*<div>&nbsp;<\/div>)+$/, "");
 
   return rtf.trim();
 }
 
-module.exports = { convertRtfToHtml };*/
+module.exports = { convertRtfToHtml };
+
