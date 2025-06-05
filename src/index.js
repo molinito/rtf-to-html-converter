@@ -5,7 +5,7 @@ function convertRtfToHtml(rtf) {
   rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
   rtf = rtf.replace(/\{\\f\d+\\fnil\\fcharset\d+ [^;]+;\}/g, "");
 
-  // Extract color table
+    // Extract color table
   let colorTable = [];
   rtf = rtf.replace(/\\colortbl\s*;([^}]*)}/, (_, colors) => {
     colorTable = colors.split(";").map((color) => {
@@ -17,6 +17,7 @@ function convertRtfToHtml(rtf) {
       }
       return null;
     });
+    // El primer elemento es el color por defecto (vacío), así que los índices coinciden con \cfN
     return "";
   });
 
@@ -34,59 +35,27 @@ function convertRtfToHtml(rtf) {
   // Replace non-breaking space (\~) with a normal space
   rtf = rtf.replace(/\\~/g, " ");
 
-  // Color spans (\cfN ... \cf0)
-  rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
+    // --- Bloques combinados: {\\b\\cfN ...}
+  rtf = rtf.replace(/\{\\b\\cf(\d+)\s([^}]*)\}/gms, (match, n, text) => {
+    n = parseInt(n, 10);
     if (colorTable[n]) {
-      return `<span style="color: ${colorTable[n]};">`;
+      return `<strong style="color: ${colorTable[n]};">${text}</strong>`;
     }
-    return "";
+    return `<strong>${text}</strong>`;
   });
-
-  // Bold (\b ... \b0)
-  rtf = rtf.replace(/\{\\b([^}]*)\}/gms, "<strong>$1</strong>");
-
-  // Italic (\i ... \i0)
-  rtf = rtf.replace(/\{\\i([^}]*)\}/gms, "<em>$1</em>");
-
-  // Underline (\ul ... \ulnone)
-  rtf = rtf.replace(/\{\\ul([^}]*)\}/gms, "<u>$1</u>");
-
-  rtf = rtf.replace(/\\cf0/g, "</span>");
-
-  // Merge <span style="color:..."> with <strong>, <em>, <u>
-  rtf = rtf.replace(
-    /<span style="color: ([^;]+);?">([\s\S]*?)<\/span>/g,
-    (match, color, content) => {
-      // Si el contenido es solo un strong/em/u, fusionar el style
-      if (/^<strong>[\s\S]*<\/strong>$/.test(content)) {
-        return content.replace(
-          /^<strong>/,
-          `<strong style="color: ${color};">`
-        );
-      }
-      if (/^<em>[\s\S]*<\/em>$/.test(content)) {
-        return content.replace(
-          /^<em>/,
-          `<em style="color: ${color};">`
-        );
-      }
-      if (/^<u>[\s\S]*<\/u>$/.test(content)) {
-        return content.replace(
-          /^<u>/,
-          `<u style="color: ${color};">`
-        );
-      }
-      // Si hay varios estilos anidados, aplica el color al primero
-      if (/^<(strong|em|u)>/.test(content)) {
-        return content.replace(
-          /^<(strong|em|u)>/,
-          `<$1 style="color: ${color};">`
-        );
-      }
-      // Si no, dejar el span como está
-      return `<span style="color: ${color};">${content}</span>`;
+  
+  // {\\cfN ...}
+  rtf = rtf.replace(/\{\\cf(\d+)\s([^}]*)\}/gms, (match, n, text) => {
+    n = parseInt(n, 10);
+    if (colorTable[n]) {
+      return `<span style="color: ${colorTable[n]};">${text}</span>`;
     }
-  );
+    return text;
+  });
+  // {\\i ...}
+  rtf = rtf.replace(/\{\\i\s?([^}]*)\}/gms, "<em>$1</em>");
+  // {\\ul ...}
+  rtf = rtf.replace(/\{\\ul\s?([^}]*)\}/gms, "<u>$1</u>");
 
   // Bullets (\u9679? or \bullet)
   rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
@@ -115,6 +84,9 @@ function convertRtfToHtml(rtf) {
 
   // Remove extra newlines
   rtf = rtf.replace(/\n{2,}/g, "\n");
+
+  // Limpia spans vacíos (por si quedaron)
+  rtf = rtf.replace(/<span style="color: [^;]+;"><\/span>/g, "");
 
   return rtf.trim();
 }
