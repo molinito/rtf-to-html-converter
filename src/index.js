@@ -1,3 +1,93 @@
+
+function convertRtfToHtml(rtf) {
+  if (!rtf || typeof rtf !== "string") return "";
+
+  // Eliminar tabla de fuentes
+  rtf = rtf.replace(/\\fonttbl[\s\S]+?;}/g, "");
+  rtf = rtf.replace(/\{\\f\d+\\fnil\\fcharset\d+ [^;]+;\}/g, "");
+
+  // Obtener tabla de colores
+  // Extraer y parsear la tabla de colores
+let colorTableMatch = rtf.match(/\\colortbl\s*;([^}]*)}/);
+let colorTable = {};
+if (colorTableMatch) {
+  const colors = colorTableMatch[1].split(";").filter(c => c.trim() !== "");
+  colors.forEach((colorDef, index) => {
+    const red = (colorDef.match(/\\red(\d+)/) || [])[1] || 0;
+    const green = (colorDef.match(/\\green(\d+)/) || [])[1] || 0;
+    const blue = (colorDef.match(/\\blue(\d+)/) || [])[1] || 0;
+    colorTable[index + 1] = `rgb(${red},${green},${blue})`; // +1 porque el primer índice (0) es vacío
+  });
+}
+
+  // Convertir caracteres unicode (\uXXXX?)
+  rtf = rtf.replace(/\\u(-?\d+)\??/g, (_, code) => {
+    const num = parseInt(code, 10);
+    return String.fromCharCode(num < 0 ? 65536 + num : num);
+  });
+
+  // Convertir caracteres hexadecimales (\’e1)
+  rtf = rtf.replace(/\\'([0-9a-f]{2})/gi, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+
+  // Espacios no separables (\~)
+  rtf = rtf.replace(/\\~/g, " ");
+
+  // Manejo de colores (\cfN ... \cf0)
+  rtf = rtf.replace(/\\cf(\d+)/g, (match, n) => {
+    const color = colorTable[n];
+    if (color) {
+      return `[[COLOR_START:${color}]]`;
+    }
+    return "";
+  });
+
+  rtf = rtf.replace(/\\cf0/g, "[[COLOR_END]]");
+
+  // Negrita (\b ... \b0)
+  rtf = rtf.replace(/\{\\b([^}]*)\}/gms, "<strong>$1</strong>");
+
+  // Cursiva (\i ... \i0)
+  rtf = rtf.replace(/\{\\i([^}]*)\}/gms, "<em>$1</em>");
+
+  // Subrayado (\ul ... \ulnone)
+  rtf = rtf.replace(/\{\\ul([^}]*)\}/gms, "<u>$1</u>");
+
+  // Párrafos
+  rtf = rtf.replace(/\\par[d]?/g, "</div><div>");
+  rtf = `<div>${rtf}</div>`;
+
+  // Eliminar comandos RTF y llaves restantes
+  rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
+  rtf = rtf.replace(/[{}]/g, "");
+
+  // Aplicar los spans de color
+  rtf = rtf
+    .replace(/\[\[COLOR_START:([^\]]+)\]\]/g, '<span style="color: $1;">')
+    .replace(/\[\[COLOR_END\]\]/g, '</span>');
+
+  // Manejo de viñetas
+  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
+
+  // Agrupar elementos de lista
+  rtf = rtf.replace(/(?:^|\n)[ \t]*•[ \t]*(.+)/g, "\n<li>$1</li>");
+  rtf = rtf.replace(/(?:^|\n)[ \t]*\d+\.[ \t]*(.+)/g, "\n<li>$1</li>");
+  rtf = rtf.replace(/((?:<li>.*?<\/li>\s*){1,})/gs, (match) => `<ul>${match}</ul>`);
+
+  // Eliminar divs vacíos
+  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
+  rtf = rtf.replace(/(<div>&nbsp;<\/div>)+/g, "<div>&nbsp;</div>");
+  rtf = rtf.replace(/<\/div><div>/g, "</div>\n<div>");
+  rtf = rtf.replace(/\n{2,}/g, "\n");
+
+  return rtf.trim();
+}
+
+module.exports = { convertRtfToHtml };
+
+
+/*
 function convertRtfToHtml(rtf) {
   if (!rtf || typeof rtf !== "string") return "";
 
@@ -119,4 +209,4 @@ function convertRtfToHtml(rtf) {
   return rtf.trim();
 }
 
-module.exports = { convertRtfToHtml };
+module.exports = { convertRtfToHtml };*/
