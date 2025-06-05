@@ -53,10 +53,11 @@ function convertRtfToHtml(rtf) {
 
   rtf = rtf.replace(/\\cf0/g, "</span>");
 
-  // Merge <span style="color:..."> with <strong>, <em>, <u>
+    // Merge <span style="color:..."> with <strong>, <em>, <u>
   rtf = rtf.replace(
     /<span style="color: ([^;]+);?">([\s\S]*?)<\/span>/g,
     (match, color, content) => {
+      // Si el contenido es solo un strong/em/u, fusionar el style
       if (/^<strong>[\s\S]*<\/strong>$/.test(content)) {
         return content.replace(
           /^<strong>/,
@@ -75,6 +76,14 @@ function convertRtfToHtml(rtf) {
           `<u style="color: ${color};">`
         );
       }
+      // Si hay varios estilos anidados, aplica el color al primero
+      if (/^<(strong|em|u)>/.test(content)) {
+        return content.replace(
+          /^<(strong|em|u)>/,
+          `<$1 style="color: ${color};">`
+        );
+      }
+      // Si no, dejar el span como está
       return `<span style="color: ${color};">${content}</span>`;
     }
   );
