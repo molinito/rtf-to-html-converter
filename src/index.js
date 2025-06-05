@@ -53,7 +53,7 @@ function convertRtfToHtml(rtf) {
 
   rtf = rtf.replace(/\\cf0/g, "</span>");
 
-    // Merge <span style="color:..."> with <strong>, <em>, <u>
+  // Merge <span style="color:..."> with <strong>, <em>, <u>
   rtf = rtf.replace(
     /<span style="color: ([^;]+);?">([\s\S]*?)<\/span>/g,
     (match, color, content) => {
