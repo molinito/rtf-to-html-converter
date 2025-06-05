@@ -105,6 +105,9 @@ function convertRtfToHtml(rtf) {
   // Remove extra newlines
   rtf = rtf.replace(/\n{2,}/g, "\n");
 
+  // Replace empty <div> or <div> with only spaces with &nbsp; for visual separation
+  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
+
   return rtf.trim();
 }
 
