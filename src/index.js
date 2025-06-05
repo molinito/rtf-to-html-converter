@@ -97,16 +97,15 @@ function convertRtfToHtml(rtf) {
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
-  // Clean up empty divs and whitespace
-  rtf = rtf.replace(/<div><\/div>/g, "");
-  rtf = rtf.replace(/<div>\s*<\/div>/g, "");
+  // Replace empty <div> or <div> with only spaces with &nbsp; for visual separation
+  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
+
+  // Clean up consecutive empty divs and whitespace
+  rtf = rtf.replace(/(<div>&nbsp;<\/div>)+/g, "<div>&nbsp;</div>");
   rtf = rtf.replace(/<\/div><div>/g, "</div>\n<div>");
 
   // Remove extra newlines
   rtf = rtf.replace(/\n{2,}/g, "\n");
-
-  // Replace empty <div> or <div> with only spaces with &nbsp; for visual separation
-  rtf = rtf.replace(/<div>\s*<\/div>/g, "<div>&nbsp;</div>");
 
   return rtf.trim();
 }
