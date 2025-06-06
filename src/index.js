@@ -18,6 +18,9 @@ function convertRtfToHtml(rtf) {
     });
     // Remove color table from RTF
     rtf = rtf.replace(/\\colortbl\s*;[^}]*}/, "");
+
+    // Remove numbers that directly follow certain RTF commands (e.g., \fi-360)
+    rtf = rtf.replace(/\\(fi|li|sa|sl|fs|sb)-?\d+/g, "");
   }
 
   // --- BULLET HANDLING (robust for most RTF cases) ---
@@ -95,7 +98,7 @@ function convertRtfToHtml(rtf) {
   rtf = rtf.replace(/[{}]/g, "");
 
   // Remove leftover numbers from paragraph formatting (e.g., -360, 720, etc.)
-  rtf = rtf.replace(/(^|[>\s])\-?\d+\b/g, "$1");
+  //rtf = rtf.replace(/(^|[>\s])\-?\d+\b/g, "$1");
 
   // Apply color spans
   rtf = rtf
