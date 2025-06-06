@@ -79,6 +79,12 @@ node test
 
 ISC
 
+## Maintainers & Contributions
+
+This repository is open source and free to use under the ISC license.  
+Only the original author can modify or publish new versions to this repository and npm.  
+If you wish to suggest improvements, please open an issue or a pull request—changes will only be merged at the author's discretion.
+
 ## Author
 
 Marcelo Saravia
@@ -88,3 +94,10 @@ Marcelo Saravia
 - Email: molinos456@hotmail.com, molinito48@gmail.com
 - LinkedIn: [linkedin.com/in/marcelo-saravia-27128092](https://linkedin.com/in/marcelo-saravia-27128092)
 - GitHub: [github.com/molinito](https://github.com/molinito)
+
+## Support this project
+
+If you find this library useful, you can support its development by buying me a coffee:
+
+[![Buy Me a Coffee ](https://paypal.me/molinito12)]
+
