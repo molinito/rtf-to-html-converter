@@ -20,6 +20,38 @@ function convertRtfToHtml(rtf) {
     rtf = rtf.replace(/\\colortbl\s*;[^}]*}/, "");
   }
 
+  // --- BULLET HANDLING (robust for most RTF cases) ---
+
+  // 1. Detect bullet character in list definition (e.g., {\pntxtb\'B7})
+  let bulletChar = "•"; // Default bullet
+  const bulletMatch = rtf.match(/\\pntxtb\\'([0-9a-f]{2})/i);
+  if (bulletMatch) {
+    bulletChar = String.fromCharCode(parseInt(bulletMatch[1], 16));
+  }
+
+  // 2. Replace any RTF bullet definition with actual bullet character (before removing list definitions)
+  rtf = rtf.replace(/\\pntxtb\\'([0-9a-f]{2})/gi, bulletChar);
+  rtf = rtf.replace(/\\pntxtb\\'95/gi, bulletChar); // Sometimes \u8226? or \'95 for bullet
+
+  // 3. Replace unicode bullets
+  rtf = rtf.replace(/\\u8226\?/g, bulletChar);
+  rtf = rtf.replace(/\\u9679\?/g, bulletChar);
+
+  // 4. Replace literal \bullet
+  rtf = rtf.replace(/\\bullet/g, bulletChar);
+
+  // 5. Replace hexadecimal bullets outside definitions
+  rtf = rtf.replace(/\\'[bB]7/g, bulletChar);
+  rtf = rtf.replace(/\\'95/g, bulletChar);
+
+  // 6. Insert bullet at the start of each list item if the list definition uses \pntext\tab
+  rtf = rtf.replace(/\{\\pntext\\tab\}/g, bulletChar + " ");
+
+  // 7. Remove RTF list/numbering definitions (blocks like {\*\pn...})
+  rtf = rtf.replace(/\{\\\*\\pn[\s\S]+?\}/g, "");
+
+  // --- END BULLET HANDLING ---
+
   // Convert unicode characters (\uXXXX?)
   rtf = rtf.replace(/\\u(-?\d+)\??/g, (_, code) => {
     const num = parseInt(code, 10);
@@ -62,13 +94,16 @@ function convertRtfToHtml(rtf) {
   rtf = rtf.replace(/\\[a-z]+\d* ?/g, "");
   rtf = rtf.replace(/[{}]/g, "");
 
+  // Remove leftover numbers from paragraph formatting (e.g., -360, 720, etc.)
+  rtf = rtf.replace(/(^|[>\s])\-?\d+\b/g, "$1");
+
   // Apply color spans
   rtf = rtf
     .replace(/\[\[COLOR_START:([^\]]+)\]\]/g, '<span style="color: $1;">')
     .replace(/\[\[COLOR_END\]\]/g, '</span>');
 
-  // Handle bullets
-  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, "•");
+  // Handle bullets (fallbacks)
+  rtf = rtf.replace(/\\u9679\?|\u2022|\\bullet/g, bulletChar);
 
   // Handle RTF numbered list items ({\pntext\tab}...) to <li>...</li>
   rtf = rtf.replace(/\{\\pntext\\tab\}([^\n<]*)/g, (match, item) => {
@@ -97,4 +132,3 @@ function convertRtfToHtml(rtf) {
 }
 
 module.exports = { convertRtfToHtml };
-
