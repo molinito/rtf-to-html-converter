@@ -99,5 +99,5 @@ Marcelo Saravia
 
 If you find this library useful, you can support its development by buying me a coffee:
 
-[![Buy Me a Coffee ](https://paypal.me/molinito12)]
+Paypal: [paypal.me/molinito12](https://paypal.me/molinito12)
 
